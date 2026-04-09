@@ -63,3 +63,27 @@ def load_dataset_by_id(dataset_id):
         raise ValueError("Unsupported file format")
 
     return df,file_path,extension
+
+
+def save_cleaned_dataset(df:pd.DataFrame,file_path:str,extension:str):
+    extension=extension.lower()
+    
+    if extension == 'csv':
+        df.to_csv(file_path,index=False)
+        
+    elif extension == 'json':
+        df.to_json(file_path,index=False)
+    
+    elif extension == 'xlsx':
+        df.to_excel(file_path,index=False)
+    
+    else:
+        raise ValueError(f"Unsupported extension:{extension}")
+    
+    return {
+        'saved_path':file_path,
+        'rows':int(df.shape[0]),
+        'columns':int(df.shape[1])
+    }
+    
+    
