@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from app.utils.validators import allowed_file
-from app.services.dataset_service import save_dataset,get_dataset_summary
+from app.services.dataset_service import save_dataset,get_dataset_summary,load_dataset_by_id,save_cleaned_dataset
+from app.services.cleaning_service import run_cleaning_pipeline,basic_structure_check
 
 dataset_bp = Blueprint('datasets', __name__)
 
@@ -67,4 +68,24 @@ def dataset_summary(dataset_id):
             'status':'error',
             'message':str(e)
         }),500
-        
+
+@dataset_bp.route("/<dataset_id>/cleaning", methods=["PATCH"])
+def clean_dataset(dataset_id):
+    try:
+        df, file_path, extension = load_dataset_by_id(dataset_id)
+
+        cleaned_df, report = run_cleaning_pipeline(df)
+
+        save_cleaned_dataset(cleaned_df, file_path, extension)
+
+        return jsonify({
+            "status": "success",
+            "message": "Detailed cleaning pipeline applied",
+            "data": report
+        }), 200
+
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
