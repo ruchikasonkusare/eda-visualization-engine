@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import uuid
+from app.services.cleaning_service import basic_structure_check
 
 upload_folder = 'uploads'
 os.makedirs(upload_folder, exist_ok=True)
@@ -26,32 +27,39 @@ def save_dataset(file):
     }
     
 def get_dataset_summary(dataset_id):
+    
+    df,file_path,extension = load_dataset_by_id(dataset_id)
+    
+    summary=basic_structure_check(df)
+    
+    summary['duplicated_rows']=int(df.duplicated().sum())
+    summary["preview"]=df.head(5).to_dict(orient='records')
+    
+    return summary
+    
+def load_dataset_by_id(dataset_id):
     file_path=None
+    
     for file in os.listdir(upload_folder):
         if file.startswith(dataset_id):
             file_path=os.path.join(upload_folder,file)
             break
-        
+    
     if not file_path:
         raise FileNotFoundError("Dataset not found")
     
-    if file_path.endswith('.csv'):
+    extension=file_path.rsplit(".",1)[1].lower()
+    
+    if extension == 'csv':
         df=pd.read_csv(file_path)
     
-    elif file_path.endswith('.json'):
+    elif extension =='json':
         df=pd.read_json(file_path)
-    
-    elif file_path.endswith('.xlsx'):
-        df=pd.read_excel(file_path)
         
-    else:
-        raise ValueError('Unsupported file format')
+    elif extension =='xlsx':
+        df=pd.read_excel(file_path,engine='openpyxl')
     
-    return {
-        'shape':df.shape,
-        'columns':df.columns.tolist(),
-        'dtypes':df.dtypes.astype(str).to_dict(),
-        'missing_values':df.isnull().sum().to_dict(),
-        'duplicate_rows':int(df.duplicated().sum()),
-        'preview':df.head(5).to_dict(orient='records')
-    }
+    else:
+        raise ValueError("Unsupported file format")
+
+    return df,file_path,extension
