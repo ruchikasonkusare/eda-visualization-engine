@@ -11,7 +11,28 @@ def basic_structure_check(df:pd.DataFrame)->dict:
         'missing_values':df.isnull().sum().to_dict(),
         "unique_values":df.nunique().to_dict()
     }
-    
+
+# ================IDENTIFIERS===========================
+def is_identifier_column(series: pd.Series, col_name: str) -> bool:
+    col_lower = col_name.lower()
+
+    identifier_keywords = [
+        "id", "customerid", "customer_id",
+        "userid", "user_id", "rowno",
+        "row_no", "index", "serial"
+    ]
+
+    # keyword based detection
+    if any(keyword in col_lower for keyword in identifier_keywords):
+        return True
+
+    # high uniqueness means likely identifier
+    uniqueness_ratio = series.nunique(dropna=True) / max(len(series), 1)
+
+    if uniqueness_ratio > 0.95:
+        return True
+
+    return False
     
 # =============DATEATIME FORMAT NORMALIZATION===========
 def datetime_check(df:pd.DataFrame)->pd.DataFrame:
@@ -64,7 +85,11 @@ def col_types(df:pd.DataFrame)->list:
         dtype=str(df[col].dtype)
         col_type="text"
         
-        if pd.api.types.is_numeric_dtype(df[col]):
+        
+        if is_identifier_column(df[col],col):
+            col_type="identifier"
+            
+        elif pd.api.types.is_numeric_dtype(df[col]):
             col_type="numeric"
             
         elif pd.api.types.is_datetime64_any_dtype(df[col]):
@@ -81,10 +106,10 @@ def col_types(df:pd.DataFrame)->list:
             
         result.append({
             'Column': col,
-            'Data Type': dtype,
-            'Inferred Type': col_type,
-            'Unique Values': df[col].nunique(dropna=True),
-            'Ordinal Order': ordinal_info.get(col, None)
+            'Data_Type': dtype,
+            'Inferrd_Type': col_type,
+            'Unique_Values': df[col].nunique(dropna=True),
+            'Ordinal_Order': ordinal_info.get(col, None)
         })
         
     return result
