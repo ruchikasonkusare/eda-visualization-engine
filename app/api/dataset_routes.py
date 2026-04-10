@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from app.utils.validators import allowed_file
 from app.services.dataset_service import save_dataset,get_dataset_summary,load_dataset_by_id,save_cleaned_dataset
 from app.services.cleaning_service import run_cleaning_pipeline,basic_structure_check
+from app.services.visualization_service import recommendation_visulaizations
 
 dataset_bp = Blueprint('datasets', __name__)
 
@@ -89,3 +90,22 @@ def clean_dataset(dataset_id):
             "status": "error",
             "message": str(e)
         }), 500
+        
+@dataset_bp.route("/<dataset_id>/visualizations",methods=["GET"])
+def get_visualizations(dataset_id):
+    try:
+        df,_,_ =load_dataset_by_id(dataset_id)
+        recommendation=recommendation_visulaizations(df)
+        
+        return jsonify({
+            "status":'sucess',
+            "message":"Visualization recommendation generated",
+            "data":recommendation
+        }),200
+        
+    except Exception as e:
+        return jsonify({
+            "status":"error",
+            "message":str(e)
+        }),500
+        
