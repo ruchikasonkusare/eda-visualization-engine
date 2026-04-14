@@ -3,6 +3,8 @@ from app.utils.validators import allowed_file
 from app.services.dataset_service import save_dataset,get_dataset_summary,load_dataset_by_id,save_cleaned_dataset
 from app.services.cleaning_service import run_cleaning_pipeline,basic_structure_check
 from app.services.visualization_service import recommendation_visulaizations
+from app.services.plot_generation_service import generate_plot
+from app.services.report_generate_service import generate_pdf_report
 
 dataset_bp = Blueprint('datasets', __name__)
 
@@ -98,7 +100,7 @@ def get_visualizations(dataset_id):
         recommendation=recommendation_visulaizations(df)
         
         return jsonify({
-            "status":'sucess',
+            "status":'success',
             "message":"Visualization recommendation generated",
             "data":recommendation
         }),200
@@ -109,3 +111,47 @@ def get_visualizations(dataset_id):
             "message":str(e)
         }),500
         
+        
+@dataset_bp.route("/<dataset_id>/report",methods=["GET"])
+def create_dataset_report(dataset_id):
+    try:
+        df,_,_=load_dataset_by_id(dataset_id)
+        
+        summary=get_dataset_summary(dataset_id)
+        recommendations=recommendation_visulaizations(df)
+        visual=[]
+        
+        for rec in recommendations:
+            for chart in rec.get('recommended_charts'):
+                try:
+                    plot=generate_plot(
+                        df,
+                        chart['chart'],
+                        rec['columns']
+                    )
+                    plot["insight"]=chart.get("insight",'')
+                    visual.append(plot)
+                
+                except Exception as e:
+                    print("Plot failed",e)
+                    continue
+                
+        print("TOTAL VISUALS:", len(visual))
+                
+        report_url=generate_pdf_report(
+            dataset_id,
+            summary,
+            visual
+        )
+        
+        return jsonify({
+            "status":"success",
+            "message":"PDF report generated successfully",
+            "report_url":report_url
+        }),200
+    
+    except Exception as e:
+        return jsonify({
+            "status":"success",
+            "message":str(e)
+        }),500

@@ -117,7 +117,7 @@ def recommendation_visulaizations(df:pd.DataFrame):
         elif inferred == 'datetime':
             charts = [
                 {
-                    'charts':'line',
+                    'chart':'line',
                     'reason':'Best for time progression',
                     'insight':'Time based trend visualization'
                 }
@@ -140,28 +140,28 @@ def recommendation_visulaizations(df:pd.DataFrame):
         if type1=="numeric" and type2=="numeric":
             charts= [
                 {
-                    "charts":"scatter",
+                    "chart":"scatter",
                     "reason":"Best for numeric relationship",
                     "insight":correlation_insight(df[col1],df[col2])
                 },
                 {
-                    "charts":"line",
+                    "chart":"line",
                     "reason":"Useful for ordereed proportion",
                     "insight":correlation_insight(df[col1],df[col2])
                 }
             ] 
         
         # categorical+numeric
-        elif (type1=="numeric" and type2==["categorical","ordinal","binary"]
-              ) or (type2=="numeric" and type1==["categorical","ordinal","binary"]) :
+        elif (type1=="numeric" and type2 in ["categorical", "ordinal", "binary"]
+              ) or (type2=="numeric" and type1 in ["categorical","ordinal","binary"]) :
             charts= [
                 {
-                    "charts":"boxplot",
+                    "chart":"boxplot",
                     "reason":"Compares numeric spread across groups",
                     "insight":"Useful for category-based spread comparision"
                 },
                 {
-                    "charts":"bar",
+                    "chart":"bar",
                     "reason":"Shows aggregated category average",
                     "insight":"Compare group means"
                 }
@@ -172,12 +172,12 @@ def recommendation_visulaizations(df:pd.DataFrame):
               ) or (type2=="numeric" and type1=="datetime") :
             charts= [
                 {
-                    "charts":"line",
+                    "chart":"line",
                     "reason":"Best for time trends",
                     "insight":"Trend over time detected"
                 },
                 {
-                    "charts":"area",
+                    "chart":"area",
                     "reason":"Good for cumulative trends",
                     "insight":"Highlight time-based growth"
                 }
@@ -222,27 +222,101 @@ def recommendation_visulaizations(df:pd.DataFrame):
             recommendation.append({
                 "columns":[col1,col2],
                 "inferred_datatype":f"{type1}+{type2}",
-                "recommeded_charts":charts
+                "recommended_charts":charts
             })
             
         
-        # ==============3 COLUMN====================
-        if len(numeric_cols)>=3:
-            recommendation.append({
-                "columns":numeric_cols[:5],
-                "inferred_datatype":"multi-numeric",
-                "recommendation_charts":[
-                    {
-                        "chart":"pairplot",
-                        "reason":"Best for multiple numeric relationship",
-                        "insight":"Useful for multi-feature comparision"
-                    },
-                    {
-                        "chart":"heatmap",
-                        "reason":"Shows correlation matrix",
-                        "insight":"Find strongest correlated features"
-                    }
-                ]
-            })
+    # ==============3 COLUMN====================
+            
+    for cols in combinations(df.columns, 3):
+        col1, col2, col3 = cols
+        type1 = inferred_map[col1]
+        type2 = inferred_map[col2]
+        type3 = inferred_map[col3]
+    
+        if "identifier" in [type1, type2, type3]:
+            continue
         
-        return recommendation
+        charts = []
+    
+        types = [type1, type2, type3]
+    
+        # categorical + categorical + numeric
+        if (
+            sum(t in ["categorical", "ordinal", "binary"] for t in types) == 2
+            and types.count("numeric") == 1
+        ):
+            charts = [
+                {
+                    "chart": "grouped_boxplot",
+                    "reason": "Best for comparing numeric spread across 2 categories",
+                    "insight": "Useful for subgroup comparison"
+                },
+                {
+                    "chart": "grouped_bar",
+                    "reason": "Compares average numeric values by category groups",
+                    "insight": "Useful for hierarchical comparison"
+                }
+            ]
+    
+        # datetime + categorical + numeric
+        elif (
+            "datetime" in types
+            and "numeric" in types
+            and any(t in ["categorical", "ordinal", "binary"] for t in types)
+        ):
+            charts = [
+                {
+                    "chart": "multi_line",
+                    "reason": "Shows trends over time across groups",
+                    "insight": "Useful for segmented time-series analysis"
+                },
+                {
+                    "chart": "stacked_area",
+                    "reason": "Shows composition change over time",
+                    "insight": "Useful for contribution trends"
+                }
+            ]
+    
+        # numeric + numeric + categorical
+        elif (
+            types.count("numeric") == 2
+            and any(t in ["categorical", "ordinal", "binary"] for t in types)
+        ):
+            charts = [
+                {
+                    "chart": "colored_scatter",
+                    "reason": "Shows numeric relationship separated by category",
+                    "insight": "Useful for grouped correlation analysis"
+                }
+            ]
+    
+        if charts:
+            recommendation.append({
+                "columns": list(cols),
+                "inferred_datatype": " + ".join(types),
+                "recommended_charts": charts
+            })
+            
+            
+    # =============3+ CoLUMNS=========
+        
+    if len(numeric_cols)>3:
+        recommendation.append({
+            "columns":numeric_cols[:5],
+            "inferred_datatype":"multi-numeric",
+            "recommended_charts":[
+                {
+                    "chart":"pairplot",
+                    "reason":"Best for multiple numeric relationship",
+                    "insight":"Useful for multi-feature comparision"
+                },
+                {
+                    "chart":"heatmap",
+                    "reason":"Shows correlation matrix",
+                    "insight":"Find strongest correlated features"
+                }
+            ]
+        })
+    
+    return recommendation
