@@ -1,6 +1,7 @@
 import pandas as pd
 from itertools import combinations
 from app.services.cleaning_service import col_types
+from app.services.plot_generation_service import generate_plot
 
 # ======================INSIGHT HELPER=====================
 
@@ -320,3 +321,47 @@ def recommendation_visulaizations(df:pd.DataFrame):
         })
     
     return recommendation
+
+def search_visualization(df, query, recommendations):
+    query = query.lower().strip()
+
+    matched_columns = []
+
+    # step 1: detect columns from text
+    for col in df.columns:
+        if col.lower() in query:
+            matched_columns.append(col)
+
+    if not matched_columns:
+        raise ValueError("No matching columns found.")
+
+    best_match = None
+    best_score = 0
+
+    # step 2: find best recommendation
+    for rec in recommendations:
+        rec_cols = rec["columns"]
+
+        overlap = len(set(matched_columns) & set(rec_cols))
+
+        if overlap > best_score:
+            best_score = overlap
+            best_match = rec
+
+    if not best_match:
+        raise ValueError("No suitable chart found.")
+
+    # step 3: choose first best chart
+    best_chart = best_match["recommended_charts"][0]["chart"]
+
+    result = generate_plot(
+        df,
+        best_chart,
+        best_match["columns"]
+    )
+
+    result["insight"] = best_match["recommended_charts"][0].get(
+        "insight", ""
+    )
+
+    return result
